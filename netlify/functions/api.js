@@ -12,10 +12,17 @@ app.use(express.json());
 
 
 function obtenerAlmacenMetricas() {
-  return getStore({
+  const opciones = {
     name: 'funnel-metrics',
     consistency: 'strong'
-  });
+  };
+
+  if (process.env.NETLIFY_SITE_ID && process.env.NETLIFY_AUTH_TOKEN) {
+    opciones.siteID = process.env.NETLIFY_SITE_ID;
+    opciones.token = process.env.NETLIFY_AUTH_TOKEN;
+  }
+
+  return getStore(opciones);
 }
 
 
@@ -23,7 +30,7 @@ router.post('/metrics', async (req, res) => {
   try {
     const { step, source, sessionId, metadata } = req.body;
 
-    
+    // 1. Validación obligatoria
     if (!step || !source) {
       return res.status(400).json({
         status: 'error',
@@ -31,7 +38,7 @@ router.post('/metrics', async (req, res) => {
       });
     }
 
-   
+  
     const randomSuffix = Math.random().toString(36).substring(2, 7);
     const eventId = `metric_${Date.now()}_${randomSuffix}`;
     const timestamp = new Date().toISOString();
@@ -45,7 +52,7 @@ router.post('/metrics', async (req, res) => {
       timestamp
     };
 
-   
+  
     const store = obtenerAlmacenMetricas();
     await store.setJSON(eventId, metricRecord);
 
@@ -79,7 +86,7 @@ router.get('/metrics', async (req, res) => {
 
     let eventosFiltrados = todosLosEventos.filter(Boolean);
 
-   
+    
     if (step) {
       eventosFiltrados = eventosFiltrados.filter(
         (e) => e.step === String(step).toLowerCase().trim()
