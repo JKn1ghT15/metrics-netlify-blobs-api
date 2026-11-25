@@ -3,95 +3,136 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Demo Day - Panel de Telemetría</title>
+  <title>Panel de Telemetría - Reduce, Recicla, Raccoon (RRR)</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: #f4f6f8; padding: 30px; color: #1e293b; }
-    .container { max-width: 650px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    button { background: #00ad9f; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; margin: 5px 5px 5px 0; }
-    button:hover { background: #008f83; }
-    .btn-csv { background: #3b82f6; }
-    pre { background: #1e293b; color: #38bdf8; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f3f6f4;
+      color: #1f2937;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+      margin: 0;
+    }
+    .card {
+      background: #ffffff;
+      max-width: 720px;
+      width: 100%;
+      border-radius: 14px;
+      padding: 32px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.6rem;
+      color: #14532d;
+    }
+    p.subtitulo {
+      color: #4b5563;
+      margin-bottom: 24px;
+    }
+    .botones {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    button {
+      border: none;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    .btn-verde { background-color: #16a34a; }
+    .btn-azul { background-color: #2563eb; }
+    .resumen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-box span {
+      display: block;
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #15803d;
+    }
+    pre {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 18px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📊 Simulador de Funnel - Demo Day</h1>
-    <p><strong>Tu Sesión Activa:</strong> <span id="sesion-display"></span></p>
-    
-    <h3>1. Simular acciones del usuario:</h3>
-    <button onclick="enviarEvento('tofu_attraction', 'qr_campus')">📱 Escanear QR (TOFU)</button>
-    <button onclick="enviarEvento('bofu_interaction', 'web_button')">🎮 Clic en Jugar Demo (BOFU)</button>
-    <button onclick="enviarEvento('feedback_submission', 'form_demoday')">⭐ Enviar Feedback</button>
+  <div class="card">
+    <h1>🦝 Telemetría en Vivo — Reduce, Recicla, Raccoon (RRR)</h1>
+    <p class="subtitulo">Conteo real de partidas jugadas desde Código QR y Landing Page.</p>
 
-    <h3>2. Consultar Analítica:</h3>
-    <button onclick="consultarMetricas()">🔄 Ver Resumen en Vivo</button>
-    <a href="/api/metrics/export?format=csv" target="_blank">
-      <button class="btn-csv">📥 Descargar Excel (CSV)</button>
-    </a>
+    <div class="botones">
+      <button class="btn-verde" onclick="consultarMetricas()">🔄 Actualizar Conteo en Vivo</button>
+      <button class="btn-azul" onclick="window.location.href='/api/metrics/export'">📥 Descargar Excel (CSV)</button>
+    </div>
 
-    <h3>Respuesta del Servidor:</h3>
-    <pre id="resultado">Esperando interacción...</pre>
+    <div class="resumen-grid">
+      <div class="stat-box">
+        Total Partidas
+        <span id="total-eventos">0</span>
+      </div>
+      <div class="stat-box">
+        Entradas por QR
+        <span id="total-qr">0</span>
+      </div>
+      <div class="stat-box">
+        Entradas por Landing
+        <span id="total-landing">0</span>
+      </div>
+    </div>
+
+    <h3>Detalle de Registros Recibidos:</h3>
+    <pre id="respuesta-servidor">Cargando métricas reales de RRR...</pre>
   </div>
 
   <script>
-    function obtenerSessionId() {
-      let id = sessionStorage.getItem('funnel_session_id');
-      if (!id) {
-        id = 'sess_' + crypto.randomUUID().slice(0, 8);
-        sessionStorage.setItem('funnel_session_id', id);
-      }
-      return id;
-    }
-
-    function obtenerParametrosUTM() {
-      const params = new URLSearchParams(window.location.search);
-      return {
-        utm_source: params.get('utm_source') || 'directo',
-        utm_medium: params.get('utm_medium') || 'ninguno',
-        utm_campaign: params.get('utm_campaign') || 'organico',
-        userAgent: navigator.platform
-      };
-    }
-
-    const sessionIdActual = obtenerSessionId();
-    document.getElementById('sesion-display').textContent = sessionIdActual;
-
-    async function enviarEvento(step, source) {
-      const visor = document.getElementById('resultado');
-      visor.textContent = 'Enviando métrica...';
+    async function consultarMetricas() {
+      const visor = document.getElementById('respuesta-servidor');
+      visor.textContent = 'Consultando base de datos...';
 
       try {
-        const res = await fetch('/api/metrics', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            step,
-            source,
-            sessionId: sessionIdActual,
-            metadata: obtenerParametrosUTM()
-          }),
-          keepalive: true
-        });
-        const data = await res.json();
-        visor.textContent = JSON.stringify(data, null, 2);
+        const res = await fetch('/api/metrics');
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          const summary = json.data.summary;
+          document.getElementById('total-eventos').textContent = summary.totalEvents || 0;
+          document.getElementById('total-qr').textContent = summary.bySource.qr || 0;
+          document.getElementById('total-landing').textContent = summary.bySource.landing || 0;
+        }
+
+        visor.textContent = JSON.stringify(json, null, 2);
       } catch (err) {
-        visor.textContent = 'Error: ' + err.message;
+        visor.textContent = 'Error al conectar con la API: ' + err.message;
       }
     }
 
-    async function consultarMetricas() {
-      const visor = document.getElementById('resultado');
-      visor.textContent = 'Consultando Netlify Blobs...';
-      const res = await fetch('/api/metrics');
-      const data = await res.json();
-      visor.textContent = JSON.stringify(data, null, 2);
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const params = new URLSearchParams(window.location.search);
-      const origen = params.get('utm_source') || 'visita_directa';
-      enviarEvento('mofu_landing', origen);
-    });
+    // Carga los datos automáticamente al abrir la página
+    consultarMetricas();
   </script>
 </body>
 </html>

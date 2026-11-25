@@ -8,8 +8,18 @@ dotenv.config();
 const app = express();
 const router = express.Router();
 
-app.use(express.json());
+// Permisos CORS para que Unity WebGL pueda enviar métricas sin ser bloqueado por el navegador
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
+app.use(express.json());
 
 function obtenerAlmacenMetricas() {
   const opciones = {
@@ -25,7 +35,6 @@ function obtenerAlmacenMetricas() {
   return getStore(opciones);
 }
 
-
 router.post('/metrics', async (req, res) => {
   try {
     const { step, source, sessionId, metadata } = req.body;
@@ -38,7 +47,6 @@ router.post('/metrics', async (req, res) => {
       });
     }
 
-  
     const randomSuffix = Math.random().toString(36).substring(2, 7);
     const eventId = `metric_${Date.now()}_${randomSuffix}`;
     const timestamp = new Date().toISOString();
@@ -52,7 +60,6 @@ router.post('/metrics', async (req, res) => {
       timestamp
     };
 
-  
     const store = obtenerAlmacenMetricas();
     await store.setJSON(eventId, metricRecord);
 
@@ -71,7 +78,6 @@ router.post('/metrics', async (req, res) => {
   }
 });
 
-
 router.get('/metrics', async (req, res) => {
   try {
     const { step, source } = req.query;
@@ -86,7 +92,6 @@ router.get('/metrics', async (req, res) => {
 
     let eventosFiltrados = todosLosEventos.filter(Boolean);
 
-    
     if (step) {
       eventosFiltrados = eventosFiltrados.filter(
         (e) => e.step === String(step).toLowerCase().trim()
@@ -125,7 +130,6 @@ router.get('/metrics', async (req, res) => {
     });
   }
 });
-
 
 router.get('/metrics/export', async (req, res) => {
   try {
